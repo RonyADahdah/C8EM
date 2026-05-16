@@ -2,7 +2,6 @@
 // In this file, we are implementing the instruction set of the CHIP8 as per the technical reference document
 
 #include "cpu.h"
-#include <stdint.h>
 #include "emu.h"
 
 // This function clears the display. It does this by flipping all pixels to 0 //
@@ -15,6 +14,7 @@ void clear_display(Display* display) {
             display->display_screen[i][j] = display->display_screen[i][j] & 0x00;
         }
     }
+    drawing_flag = 0xFF;
 }
 
 // This function is called when a program function returns, and it updates the program counter to the previous value,
@@ -329,10 +329,10 @@ void load_dt_in_Vx(uint16_t op_code, uint8_t* gp_registers, uint8_t sp_delay_tim
 void store_pressed_key_in_Vx(uint16_t op_code, uint8_t* gp_registers) {
     // We extract the value of x from the operation code. //
     uint8_t x = (uint8_t)((op_code & 0x0F00) >> 8);
-    // Call the function wait_for_key_press() from the frontend. //
-    uint8_t key_pressed = wait_for_key_press();
+    // Raise the wait_for_key_press flag for the frontend. //
+    wait_for_key_press = 0xFF;
     // Assign the value of the pressed key to Vx. //
-    *(gp_registers + x) = key_pressed;
+    *(gp_registers + x) = pressed_key;
 }
 
 // This function loads the value of the Vx register into the delay timer register.
@@ -455,6 +455,7 @@ void display_n_sprite_at_I(uint16_t op_code, Display *display, uint8_t* gp_regis
             }
          }
     }
+    drawing_flag = 0xFF;
 }
 
 // This function sets I register to the location of the hexadecimal sprite corresponding to the register Vx.

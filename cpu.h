@@ -1,16 +1,17 @@
-//
-// Created by Rony-PC on 5/16/2026.
-//
+// Created by Rony on 5/16/2026.
+// In this file, we are declaring the instruction set of the CHIP8 as per the technical reference document
 
 #ifndef C8EM_CPU_H
 #define C8EM_CPU_H
 
-// Created by Rony on 5/16/2026.
-// In this file, we are declaring the instruction set of the CHIP8 as per the technical reference document
+#include "emu.h"
+#include <stdint.h>
 
 void clear_display(Display* display);
 
 void subroutine_return(uint16_t program_counter, uint8_t* stack_pointer);
+
+void jump_function(uint16_t op_code, uint16_t program_counter);
 
 void call_subroutine(uint16_t op_code, uint16_t program_counter, uint8_t* stack_pointer);
 

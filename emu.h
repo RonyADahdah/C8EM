@@ -4,6 +4,8 @@
 #ifndef C8EM_EMU_H
 #define C8EM_EMU_H
 
+#include <stdint.h>
+
 // Here we define the display size //
 #define DISPLAY_HORIZONTAL_PIXELS 64
 #define DISPLAY_VERTICAL_PIXELS 32
@@ -44,6 +46,39 @@ enum {
     VE = 14,
     VF = 15,
 };
+
+// Declare memory array //
+uint8_t memory[MAX_MEMORY_SIZE];
+
+// Declare general purpose registers //
+uint8_t gp_registers[GP_REGISTERS_NUMBERS];
+
+// Declare the 16-bit register //
+uint16_t I;
+
+// Declare special purpose registers //
+uint8_t sp_delay_timer, sp_sound_timer;
+
+// Declare the program counter register //
+uint16_t program_counter;
+
+// Declare the stack pointer //
+uint8_t* stack_pointer;
+
+// Declare the stack memory //
+uint16_t stack_memory[STACK_MEMORY_SIZE];
+
+// Declare the keypad //
+uint16_t keypad[KEYPAD_SIZE];
+
+// Declare a flag to indicate that drawing on the screen is required. //
+uint8_t drawing_flag;
+
+// Declare a flag to tell the frontend to wait for a keypress. //
+uint8_t wait_for_key_press;
+
+// Declare a variable to hold the pressed key value. //
+uint8_t pressed_key;
 
 // Declare the display structure //
 typedef struct {
