@@ -5,4 +5,5 @@ set(CMAKE_C_STANDARD 23)
 
 add_executable(C8EM main.c
         cpu.c
-        cpu.h)
+        cpu.h
+        emu.h)
