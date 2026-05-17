@@ -3,11 +3,59 @@
 // This file will include all functions that are OS specific.
 
 #include "frontend.h"
-
-#include <stdio.h>
-
 #include "cpu.h"
 #include "emu.h"
+
+#include <stdio.h>
+#include <stdlib.h>
+#include "lib/SDL_init.h"
+
+// This function loads the program into the memory.
+void load_rom(char *rom_file) {
+    // Open the program rom file for read. //
+    FILE *fp = fopen(rom_file, "rb");
+    // Check if the file cannot be opened. //
+    if (!fp) {
+        // Print an error message and exit. //
+        printf("Could not open rom file\n");
+        exit(ROM_LOADING_ERROR);
+    }
+    // If the file was opened successfully, then move the file pointer to the end of the file. //
+    fseek(fp, 0, SEEK_END);
+
+    // Get the file size. //
+    long filesize = ftell(fp);
+
+    // Check if the loaded file size is greater than the allowed size. //
+    if (filesize > MAX_ROM_SIZE) {
+        // If yes, close the file, print an error message then exit. //
+        fclose(fp);
+        printf("ROM file is too big\n");
+        exit(ROM_SIZE_TOO_BIG);
+    }
+    // If the file size is correct, print the file size. //
+    printf("+File size is %ld\n", filesize);
+
+    // Then move the file pointer back to the beginning of the file. //
+    fseek(fp, 0, SEEK_SET);
+
+    // Read the data from the file into the memory starting at location PROGRAM_START_LOCATION. //
+    size_t read_count = fread(&memory[PROGRAM_START_LOCATION], sizeof(uint8_t), filesize, fp);
+    // Print an informational message. //
+    printf("+Read %llu bytes from loaded file\n", read_count);
+    // Check if the data read is not equal to the file size. //
+    if (read_count != filesize) {
+        // If not, close the file, print an error message then exit. //
+        fclose(fp);
+        printf("Something went wrong!\n");
+        exit(GENERAL_FAILURE);
+    }
+    // If nothing goes wrong, print a success message and set the program counter.
+    printf("+ROM was loaded successfully!\n");
+    printf("+Setting initial program counter\n");
+    program_counter = PROGRAM_START_LOCATION;
+    printf("+Program counter: %u\n", program_counter);
+}
 
 void emulate_cycle() {
     // Get the operation code from the program counter. //
@@ -163,4 +211,14 @@ void emulate_cycle() {
     }
 }
 
+void update_timers() {
+    sp_delay_timer -= 1;
+    sp_sound_timer -= 1;
+}
+
+void render_display() {
+    // Check if SDL3 is initialized or not. //
+    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+        
+    }
 }

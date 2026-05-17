@@ -4,7 +4,15 @@
 #ifndef C8EM_FRONTEND_H
 #define C8EM_FRONTEND_H
 
+#define WRONG_NUMBER_OF_ARGUMENTS 1
+#define ROM_LOADED_SUCCESSFULLY 2
+#define ROM_LOADING_ERROR 3
+#define ROM_SIZE_TOO_BIG 4
+#define GENERAL_FAILURE 5
+
 #include <stdint.h>
+
+void load_rom(char *);
 
 void emulate_cycle();
 
