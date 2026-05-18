@@ -9,11 +9,11 @@
 
 void clear_display(Display* display);
 
-void subroutine_return(uint16_t program_counter, uint8_t* stack_pointer);
+void subroutine_return(uint16_t program_counter, uint8_t stack_pointer);
 
 void jump_function(uint16_t op_code, uint16_t program_counter);
 
-void call_subroutine(uint16_t op_code, uint16_t program_counter, uint8_t* stack_pointer);
+void call_subroutine(uint16_t op_code, uint16_t program_counter, uint8_t stack_pointer);
 
 void skip_next_instruction_if_Vx_equal_kk(uint16_t op_code, uint16_t program_counter, uint8_t* gp_registers);
 
@@ -71,8 +71,8 @@ void store_V0_to_Vx_starting_I(uint16_t op_code, uint8_t* gp_registers, uint16_t
 
 void load_V0_to_Vx_starting_I(uint16_t op_code, uint8_t* gp_registers, uint16_t I);
 
-void display_n_sprite_at_I(uint16_t op_code, Display *display, uint8_t* gp_registers, uint8_t I);
+void display_n_sprite_at_I(uint16_t op_code, Display *display, uint8_t* gp_registers, uint16_t I);
 
-void store_Vx_loc_in_I(uint16_t op_code, Display *display, uint8_t I);
+void store_Vx_loc_in_I(uint16_t op_code, uint16_t I);
 
 #endif //C8EM_CPU_H

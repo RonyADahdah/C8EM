@@ -2,7 +2,8 @@
 // In this file, we are implementing the instruction set of the CHIP8 as per the technical reference document
 
 #include "cpu.h"
-#include "emu.h"
+
+#include <stdio.h>
 
 // This function clears the display. It does this by flipping all pixels to 0 //
 void clear_display(Display* display) {
@@ -21,9 +22,9 @@ void clear_display(Display* display) {
 // and it decrements the stack pointer by 1. Each time a program function is called, the CPU pushes the program counter
 // into the stack and increments the stack pointer by 1. When it finishes the function execution, it pops up the old
 // program counter value, load it into the program counter variable, and decrements the stack pointer by 1.
-void subroutine_return(uint16_t program_counter, uint8_t* stack_pointer) {
+void subroutine_return(uint16_t program_counter, uint8_t stack_pointer) {
     // Here we load the value pointed at by the stack pointer to the program counter //
-    program_counter = *stack_pointer;
+    program_counter = stack_memory[stack_pointer];
     // Now we decrement the stack pointer by 1 //
     stack_pointer -= 1;
 }
@@ -40,11 +41,11 @@ void jump_function(uint16_t op_code, uint16_t program_counter) {
 // the operation code so we have to extract it by ANDing the opcode with 0x0FFF. But before loading the address into
 // the program counter, we have to increment the stack pointer by 1, then retrieve the current program counter value
 // and push it into the stack.
-void call_subroutine(uint16_t op_code, uint16_t program_counter, uint8_t* stack_pointer) {
+void call_subroutine(uint16_t op_code, uint16_t program_counter, uint8_t stack_pointer) {
     // We increment the stack pointer by 1 //
     stack_pointer += 1;
     // We assign the variable pointed by the stack pointer the old program counter value //
-    *stack_pointer = program_counter;
+    stack_memory[stack_pointer] = program_counter;
     // We extract the new function address and load it into the program counter //
     program_counter = op_code & 0x0FFF;
 }
@@ -63,6 +64,7 @@ void skip_next_instruction_if_Vx_equal_kk(uint16_t op_code, uint16_t program_cou
     if (*(gp_registers + x) == kk_value) {
         program_counter += 2;
     }
+    printf("program counter in 3xkk: %d\n",program_counter);
 }
 
 // This function is the same as the one above, but if the values are not equal.
@@ -330,7 +332,7 @@ void store_pressed_key_in_Vx(uint16_t op_code, uint8_t* gp_registers) {
     // We extract the value of x from the operation code. //
     uint8_t x = (uint8_t)((op_code & 0x0F00) >> 8);
     // Raise the wait_for_key_press flag for the frontend. //
-    wait_for_key_press = 0xFF;
+    wait_key_press = 0xFF;
     // Assign the value of the pressed key to Vx. //
     *(gp_registers + x) = pressed_key;
 }
@@ -367,11 +369,11 @@ void store_bcd_of_Vx(uint16_t op_code, uint8_t* gp_registers, uint16_t I) {
     // Read the value stored in Vx. //
     uint8_t decimal = *(gp_registers + x);
     // store the hundreds digit. //
-    I = (decimal / 100) % 10;
+    memory[I] = (decimal / 100) % 10;
     // store the tens digit. //
-    *(&I+1)= (decimal / 10) % 10;
+    memory[I+1] = (decimal / 10) % 10;
     // store the ones digit. //
-    *(&I+2)= decimal % 10;
+    memory[I+2] = decimal % 10;
 }
 
 // This function stores the values of registers V0 to Vx in memory starting at location I.
@@ -381,7 +383,7 @@ void store_V0_to_Vx_starting_I(uint16_t op_code, uint8_t* gp_registers, uint16_t
     // Loop through the registers to get their values. //
     for (int i=0; i<=x; i++) {
         // Assign each register value to a memory location starting at I. //
-        *(&I + i) = *(gp_registers + i);
+        memory[I + i] = *(gp_registers + i);
     }
 }
 
@@ -392,15 +394,15 @@ void load_V0_to_Vx_starting_I(uint16_t op_code, uint8_t* gp_registers, uint16_t 
     // Loop through the registers to load their values. //
     for (int i=0; i<=x; i++) {
         // Assign each memory location to a register value starting at V0. //
-        *(gp_registers + i) = *(&I + i);
+        *(gp_registers + i) = memory[I+i];
     }
 }
 
-// This function reads n bytes from memory, starting at the address stored in I. These bytes are then displayed as
+// This function reads n bytes from memory, starting at memory location I. These bytes are then displayed as
 // sprites on screen at coordinates (Vx, Vy). Sprites are XORed onto the existing screen. If this causes any pixels
 // to be erased, VF is set to 1, otherwise it is set to 0. If the sprite is positioned so part of it is outside the
 // coordinates of the display, it wraps around to the opposite side of the screen
-void display_n_sprite_at_I(uint16_t op_code, Display *display, uint8_t* gp_registers, uint8_t I) {
+void display_n_sprite_at_I(uint16_t op_code, Display *display, uint8_t* gp_registers, uint16_t I) {
     // We extract the value of x from the operation code. //
     uint8_t x = (uint8_t)((op_code & 0x0F00) >> 8);
     // We extract the value of y from the operation code. //
@@ -409,20 +411,21 @@ void display_n_sprite_at_I(uint16_t op_code, Display *display, uint8_t* gp_regis
     uint8_t n = (uint8_t)((op_code & 0x000F));
     // Declare an array to hold the sprite data read from memory. //
     uint8_t sprites[n];
+    printf("I is : %x\n", I);
     // Loop through data in memory. //
     for (int i=0; i<=n; i++) {
         // Add each memory location data to the array. //
-        sprites[i] = *(&I + i);
+        sprites[i] = memory[I+i];
     }
     // Loop through the read sprites. //
     for (int j=0; j<=n; j++) {
         // Get the current y position of the current sprite. //
-        uint8_t current_y = y + j;
+        uint8_t current_y = *(gp_registers + y) + j;
 
         // For each bit of the read sprite byte. //
         for (int k=0; k<=7; k++) {
             // Get the current x position of each and every bit. //
-            uint8_t current_x = x + k;
+            uint8_t current_x = *(gp_registers + x) + k;
             // Check if the current x position is outside the x-axis bounds. //
             if (current_x > DISPLAY_HORIZONTAL_PIXELS) {
                 // If yes, this pixel should wrap around to the opposite side, so its x will become 0.
@@ -441,7 +444,7 @@ void display_n_sprite_at_I(uint16_t op_code, Display *display, uint8_t* gp_regis
             uint8_t sprite_pixel = sprites[k] >> (7-k);
             // And we get the old pixel value. //
             uint8_t old_pixel_state = display->display_screen[current_x][current_y];
-            // We XOR both valus and store the result at the same position. //
+            // We XOR both values and store the result at the same position. //
             display->display_screen[current_x][current_y] = old_pixel_state ^ sprite_pixel;
             // If the old pixel value was 1 and it flipped to 0. //
             if (old_pixel_state == 1 && display->display_screen[current_x][current_y] == 0) {
@@ -459,10 +462,10 @@ void display_n_sprite_at_I(uint16_t op_code, Display *display, uint8_t* gp_regis
 }
 
 // This function sets I register to the location of the hexadecimal sprite corresponding to the register Vx.
-void store_Vx_loc_in_I(uint16_t op_code, Display *display, uint8_t I) {
+void store_Vx_loc_in_I(uint16_t op_code, uint16_t I) {
     // We extract the value of x from the operation code. //
     uint8_t x = (uint8_t)((op_code & 0x0F00) >> 8);
     // Since each sprite is 5 bytes long, the first sprite starts at 0x50, and if we add 5*x we get the position //
     // of sprite corresponding to register Vx. //
-    I = 0x50 + (x*5);
+    I = 0x00 + ((*gp_registers + x) * 5);
 }
