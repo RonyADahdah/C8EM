@@ -64,7 +64,6 @@ void skip_next_instruction_if_Vx_equal_kk(uint16_t op_code, uint16_t program_cou
     if (*(gp_registers + x) == kk_value) {
         program_counter += 2;
     }
-    printf("program counter in 3xkk: %d\n",program_counter);
 }
 
 // This function is the same as the one above, but if the values are not equal.
@@ -411,52 +410,48 @@ void display_n_sprite_at_I(uint16_t op_code, Display *display, uint8_t* gp_regis
     uint8_t n = (uint8_t)((op_code & 0x000F));
     // Declare an array to hold the sprite data read from memory. //
     uint8_t sprites[n];
-    printf("I is : %x\n", I);
     // Loop through data in memory. //
-    for (int i=0; i<=n; i++) {
+    for (int i=0; i<n; i++) {
         // Add each memory location data to the array. //
         sprites[i] = memory[I+i];
     }
+    // Reset the VF flag. //
+    *(gp_registers + VF) = 0x00;
+
     // Loop through the read sprites. //
-    for (int j=0; j<=n; j++) {
+    for (int j=0; j<n; j++) {
         // Get the current y position of the current sprite. //
         uint8_t current_y = *(gp_registers + y) + j;
 
-        // For each bit of the read sprite byte. //
-        for (int k=0; k<=7; k++) {
-            // Get the current x position of each and every bit. //
+        for (int k=0; k<8; k++) {
+            // Get the current x position of the current sprite. //
             uint8_t current_x = *(gp_registers + x) + k;
+
             // Check if the current x position is outside the x-axis bounds. //
-            if (current_x > DISPLAY_HORIZONTAL_PIXELS) {
+            if (current_x >= DISPLAY_HORIZONTAL_PIXELS) {
                 // If yes, this pixel should wrap around to the opposite side, so its x will become 0.
-                current_x = 0;
-                // And the y will increase by 1 because it wrapped to the opposite position. //
-                current_y += 1;
+                current_x = current_x % DISPLAY_HORIZONTAL_PIXELS;
             }
             // Check if the current y position is outside the x-axis bounds. //
-            if (current_y > DISPLAY_VERTICAL_PIXELS) {
+            if (current_y >= DISPLAY_VERTICAL_PIXELS) {
                 // If yes, this pixel should wrap around to the opposite side, so its y will become 0.
-                current_y = 0;
-                // And the x will increase by 1 because it wrapped to the opposite position. //
-                current_x += 1;
+                current_y = current_y % DISPLAY_VERTICAL_PIXELS;
             }
-            // Here we get the value or the state of the pixel (1 or 0). //
-            uint8_t sprite_pixel = sprites[k] >> (7-k);
+            // Extract the bits of each sprite. //
+            uint8_t sprite_pixel = sprites[j] >> (7-k) & 0x01;
+
             // And we get the old pixel value. //
             uint8_t old_pixel_state = display->display_screen[current_x][current_y];
+
             // We XOR both values and store the result at the same position. //
             display->display_screen[current_x][current_y] = old_pixel_state ^ sprite_pixel;
-            // If the old pixel value was 1 and it flipped to 0. //
+
+            // If the old pixel value was 1, and it flipped to 0. //
             if (old_pixel_state == 1 && display->display_screen[current_x][current_y] == 0) {
                 // Then set the VF flag to 1. //
-                *(gp_registers + VF) = 0xFF;
+                *(gp_registers + VF) = 0x01;
             }
-            else {
-                // Set the VF flag to 0. //
-                *(gp_registers + VF) = 0x00;
-
-            }
-         }
+        }
     }
     drawing_flag = 0xFF;
 }

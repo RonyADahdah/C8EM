@@ -15,12 +15,19 @@
 extern Display display;
 extern uint8_t chip8_fontset[80];
 
-SDL_Window* window = NULL;
-SDL_Renderer* renderer = NULL;
-SDL_Texture* texture = NULL;
+SDL_Window *window = NULL;
+SDL_Renderer *renderer = NULL;
+SDL_Texture *texture = NULL;
 
-void* texture_data = NULL;
+void *texture_data = NULL;
 int pitch = 0;
+
+void init_sdl() {
+    if (!SDL_Init(SDL_INIT_VIDEO)) {
+        printf("+Couldn't initialize SDL3.\n");
+        exit(SDL_INIT_ERROR);
+    }
+}
 
 // This function loads the program into the memory.
 void load_rom(char *rom_file) {
@@ -72,8 +79,6 @@ void load_rom(char *rom_file) {
     while (program_name != NULL) {
         program_name = strtok(NULL, "/");
     }
-
-    printf("+Program counter: %u\n", program_counter);
 }
 
 void emulate_cycle() {
@@ -86,9 +91,6 @@ void emulate_cycle() {
     // Then we combine the two to get the opcode. //
     // Here we are shifting the first read to the left by 1 byte to combine it with the other 1 byte on the right. //
     opcode = (opcode << 8) | memory[program_counter + 1];
-
-    // For debugging purposes. //
-    printf("+Opcode: %02x\n", opcode);
 
     // Here we increase the program counter for the next cycle. //
     program_counter += 2;
@@ -169,7 +171,7 @@ void emulate_cycle() {
             jump_to_V0_plus_nnn(opcode, gp_registers, program_counter);
             break;
         case 0xC000:
-            uint8_t random_byte = (uint8_t)(rand()%256);
+            uint8_t random_byte = (uint8_t) (rand() % 256);
             rnd_and_with_kk(opcode, gp_registers, random_byte);
             break;
         case 0xD000:
@@ -181,7 +183,8 @@ void emulate_cycle() {
                     skip_next_instruction_if_Vx_equal_pressed_key(opcode, gp_registers, program_counter, &keypad[0]);
                     break;
                 case 0x0001:
-                    skip_next_instruction_if_Vx_not_equal_pressed_key(opcode, gp_registers, program_counter, &keypad[0]);
+                    skip_next_instruction_if_Vx_not_equal_pressed_key(opcode, gp_registers, program_counter,
+                                                                      &keypad[0]);
                     break;
                 default:
                     break;
@@ -234,22 +237,10 @@ void update_timers() {
 }
 
 void render_display() {
-    // Check if SDL3 is initialized or not. //
-    if (!SDL_InitSubSystem(SDL_INIT_VIDEO)) {
-        // If not print an error message then exit. //
-        printf("+Couldn't initialize SDL3.\n");
-        exit(SDL_INIT_ERROR);
-    }
-
     // Check if the window was not previously created. //
     if (window == NULL) {
-        // Create a window for display. //
-        window = SDL_CreateWindow(program_name, DISPLAY_HORIZONTAL_PIXELS, DISPLAY_VERTICAL_PIXELS,
-        SDL_WINDOW_MAXIMIZED);
-
-        // Check if the window was not created successfully. //
+        window = SDL_CreateWindow(program_name, 640, 320, SDL_WINDOW_MAXIMIZED);
         if (!window) {
-            // Print an error code then exit. //
             printf("Couldn't create window.\n");
             exit(SDL_WINDOW_CREATION_ERROR);
         }
@@ -257,53 +248,43 @@ void render_display() {
 
     // Check if the renderer was not previously created. //
     if (renderer == NULL) {
-        // Try to create the renderer to display our memory on screen. //
         renderer = SDL_CreateRenderer(window, NULL);
-
-        // If the renderer was not created successfully. //
         if (!renderer) {
-            // Print an error message then exit. //
             printf("Couldn't create renderer.\n");
             exit(SDL_RENDERER_CREATION_ERROR);
         }
     }
 
-    // Check if the texture was previously created. //
+    // Check if the texture was not previously created. //
     if (texture == NULL) {
-        // Try to create the texture for rendering context. //
         texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_XRGB8888, SDL_TEXTUREACCESS_STREAMING,
-            DISPLAY_HORIZONTAL_PIXELS, DISPLAY_VERTICAL_PIXELS);
-
-        // If the texture was not created successfully. //
+                                    DISPLAY_HORIZONTAL_PIXELS, DISPLAY_VERTICAL_PIXELS);
         if (!texture) {
             printf("Couldn't create texture.\n");
             exit(SDL_TEXTURE_CREATION_ERROR);
         }
-
-        // Try to lock the entire texture to copy frame data. //
-        if (SDL_LockTexture(texture, NULL, &texture_data, &pitch) == true) {
-            // Calculate the pitch data. //
-            pitch = DISPLAY_HORIZONTAL_PIXELS * 8;
-            Display* display_ptr = &display;
-            printf("display ptr: %p\n", display_ptr);
-            printf("texture data: %p\n", texture_data);
-            printf("pitch: %d\n", pitch);
-            // Copy the data from our memory to the GPU memory. //
-            memcpy(texture_data, display_ptr, pitch);
-        }
-
-        drawing_flag = 0x00;
-        // Render the data. //
-        SDL_UnlockTexture(texture);
-
-        SDL_RenderClear(renderer);
-        SDL_RenderTexture(renderer, texture, NULL, NULL);
-        SDL_RenderPresent(renderer);
+        SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);
     }
 
+    // Convert 1-bit pixels to 32-bit XRGB. Row-major layout matches SDL texture memory order.
+    uint32_t converted_pixels[DISPLAY_VERTICAL_PIXELS][DISPLAY_HORIZONTAL_PIXELS];
+    for (int i = 0; i < DISPLAY_VERTICAL_PIXELS; i++) {
+        for (int j = 0; j < DISPLAY_HORIZONTAL_PIXELS; j++) {
+            converted_pixels[i][j] = display.display_screen[j][i] ? 0xFFFFFFFF : 0x00000000;
+        }
+    }
 
+    if (SDL_LockTexture(texture, NULL, &texture_data, &pitch)) {
+        memcpy(texture_data, converted_pixels, (size_t)pitch * DISPLAY_VERTICAL_PIXELS);
+        SDL_UnlockTexture(texture);
+    }
 
+    drawing_flag = 0x00;
+    SDL_RenderClear(renderer);
+    SDL_RenderTexture(renderer, texture, NULL, NULL);
+    SDL_RenderPresent(renderer);
 }
+
 
 void cleanup() {
     // Destroy created window. //

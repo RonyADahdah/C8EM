@@ -62,6 +62,9 @@ int main(int argc, char *argv[]) {
     wait_key_press = 0x00;
     pressed_key = 0x00;
 
+    // Initialize SDL3. //
+    init_sdl();
+
     // Load fonts data. //
     load_fonts();
 

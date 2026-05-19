@@ -18,6 +18,8 @@
 #define SCREEN_REFRESH_RATE 60
 #include <stdint.h>
 
+void init_sdl();
+
 void load_rom(char *);
 
 void emulate_cycle();

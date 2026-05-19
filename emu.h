@@ -25,7 +25,7 @@
 #define KEYPAD_SIZE 16
 
 // Here we define the maximum allowed program size //
-#define MAX_ROM_SIZE 3500
+#define MAX_ROM_SIZE 4096
 
 // Define general purpose registers names //
 enum {
@@ -85,7 +85,7 @@ extern char* program_name;
 
 // Declare the display structure //
 typedef struct {
-    uint8_t display_screen[DISPLAY_HORIZONTAL_PIXELS][DISPLAY_VERTICAL_PIXELS];
+    uint8_t display_screen[DISPLAY_HORIZONTAL_PIXELS][ DISPLAY_VERTICAL_PIXELS];
 }Display;
 
 #endif //C8EM_EMU_H
